@@ -1,6 +1,7 @@
 package by.tux.instagram160.models;
 
 import jakarta.persistence.*;
+//import javax.persistence.*;
 import lombok.Data;
 
 @Entity
@@ -12,14 +13,8 @@ public class PhotoModel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
-
-    private String contentType;
-
-    private Long size;
-
-    @Lob
-    private byte[] data;
+    @Column(name = "fileUrl")
+    private String photoUrl;
 
     @Column(name = "autor_id")
     private long authorId;

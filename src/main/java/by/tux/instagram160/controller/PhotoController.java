@@ -1,13 +1,10 @@
 package by.tux.instagram160.controller;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
+import by.tux.instagram160.models.helpers.PhotoResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,10 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import by.tux.instagram160.models.PhotoModel;
-import by.tux.instagram160.models.PhotoResponse;
 import by.tux.instagram160.services.PhotoService;
 
 @RestController
@@ -33,10 +27,9 @@ public class PhotoController {
     }
 
     @PostMapping
-    public ResponseEntity<String> upload(@RequestParam("photo") MultipartFile photo,@RequestParam("authorId") Long authorId) {
+    public ResponseEntity<String> addPhoto(@RequestParam("photo") MultipartFile photo,@RequestParam("authorId") Long authorId) {
         try {
             photoService.addPhoto(photo, authorId);
-
             return ResponseEntity.status(HttpStatus.OK)
                                  .body(String.format("File uploaded successfully: %s", photo.getOriginalFilename()));
         } catch (Exception e) {
@@ -46,84 +39,49 @@ public class PhotoController {
     }
 
     @GetMapping
-    public List<PhotoResponse> list() {
-        return photoService.getAllFiles()
-                          .stream()
-                          .map(this::mapToFileResponse)
-                          .collect(Collectors.toList());
+    public ResponseEntity<List<PhotoResponse>> getAllPhoto() {
+        return ResponseEntity.ok()
+                .body(photoService.getAllPhoto());
     }
 
     @GetMapping("/user={authorId}")
-    public List<PhotoResponse> listByAutorId(@PathVariable Long authorId) {
-        return photoService.getByAuthorId(authorId)
-                .stream()
-                .map(this::mapToFileResponse)
-                .collect(Collectors.toList());
-    }
-
-    private PhotoResponse mapToFileResponse(PhotoModel photoModel) {
-        String downloadURL = ServletUriComponentsBuilder.fromCurrentContextPath()
-                                                        .path("/photos/")
-                                                        .path(photoModel.getId().toString())
-                                                        .toUriString();
-        PhotoResponse photoResponse = new PhotoResponse();
-        photoResponse.setId(photoModel.getId());
-        photoResponse.setName(photoModel.getName());
-        photoResponse.setContentType(photoModel.getContentType());
-        photoResponse.setSize(photoModel.getSize());
-        photoResponse.setUrl(downloadURL);
-        photoResponse.setAuthorId(photoModel.getAuthorId());
-        photoResponse.setLikes(photoModel.getLikes());
-
-        return photoResponse;
+    public ResponseEntity<List<PhotoResponse>> listByAutorId(@PathVariable Long authorId) {
+        return ResponseEntity.ok()
+                .body(photoService.getPhotoByAuthorId(authorId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<byte[]> getPhoto(@PathVariable Long id) {
-        Optional<PhotoModel> photoModelOptional = photoService.getPhoto(id);
-
-        if (!photoModelOptional.isPresent()) {
-            return ResponseEntity.notFound()
-                                 .build();
-        }
-        PhotoModel photoModel = photoModelOptional.get();
-        return ResponseEntity.ok()
-                             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + photoModel.getName() + "\"")
-                             .contentType(MediaType.valueOf(photoModel.getContentType()))
-                             .body(photoModel.getData());
+    public ResponseEntity<PhotoResponse> getPhotoById(@PathVariable Long id) {
+        return photoService.getPhotoById(id);
     }
 
     @GetMapping("/del/{id}")
-    public ResponseEntity<String>delete(@PathVariable Long id){
-        photoService.delPhoto(id);
+    public ResponseEntity<String> deletePhotoById(@PathVariable Long id){
+        photoService.delPhotoById(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}/likes")
-    public ResponseEntity<Long> getPhotoLikes(@PathVariable Long id) {
-        Optional<PhotoModel> photoModelOptional = photoService.getPhoto(id);
-
-        if (!photoModelOptional.isPresent()) {
-            return ResponseEntity.notFound()
-                    .build();
-        }
-
-        PhotoModel photoModel = photoModelOptional.get();
+    public ResponseEntity<Long> getPhotoLikesById(@PathVariable Long id) {
         return ResponseEntity.ok()
-                .body(photoModel.getLikes());
+                .body(photoService.getPhotoLikesById(id));
     }
+
     @GetMapping("/{id}/addlike")
-    public boolean photoAddlLike(@PathVariable Long id) {
-        return photoService.addLike(id);
+    public ResponseEntity<Boolean> addPhotoLikeById(@PathVariable Long id) {
+        return ResponseEntity.ok()
+                .body(photoService.addPhotoLikeById(id));
     }
 
     @PostMapping("/{id}/edit")
-    public boolean editPhoto(@PathVariable Long id,@RequestParam("photo") MultipartFile photo,@RequestParam("autorId") Long autorId) {
+    public ResponseEntity<Boolean> editPhotoById(@PathVariable Long id,@RequestParam("photo") MultipartFile photo,@RequestParam("autorId") Long autorId) {
         try{
-            return photoService.editPhoto(id , photo, autorId);
+            return ResponseEntity.ok()
+                    .body(photoService.editPhotoById(id , photo, autorId));
         }
         catch (Exception ex){
-            return false;
+            return ResponseEntity.ok()
+                    .body(false);
         }
     }
 }

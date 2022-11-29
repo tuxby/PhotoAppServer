@@ -1,17 +1,14 @@
 package by.tux.instagram160.services;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import by.tux.instagram160.models.helpers.PhotoResponse;
 import by.tux.instagram160.models.PhotoModel;
 import by.tux.instagram160.repos.PhotoRepository;
 
@@ -19,68 +16,87 @@ import by.tux.instagram160.repos.PhotoRepository;
 public class PhotoService {
 
     private final PhotoRepository photoRepository;
+    private final FirebaseImageService firebaseImageService;
 
     @Autowired
-    public PhotoService(PhotoRepository photoRepository) {
+    public PhotoService(PhotoRepository photoRepository, FirebaseImageService firebaseImageService) {
         this.photoRepository = photoRepository;
+        this.firebaseImageService = firebaseImageService;
     }
 
-    public void addPhoto(MultipartFile photo, Long autorId) throws IOException {
-        PhotoModel photoModel = new PhotoModel();
-        photoModel.setName(StringUtils.cleanPath(photo.getOriginalFilename()));
-        photoModel.setContentType(photo.getContentType());
-        photoModel.setData(photo.getBytes());
-        photoModel.setSize(photo.getSize());
+    private PhotoResponse mapToPhotoResponse(PhotoModel photoModel) {
+        PhotoResponse photoResponse = new PhotoResponse(photoModel);
+        return photoResponse;
+    }
 
+    public List<PhotoResponse> getAllPhoto() {
+        return photoRepository.findAll()
+                .stream()
+                .map(this::mapToPhotoResponse)
+                .collect(Collectors.toList());
+    }
+
+    public void addPhoto(MultipartFile photo, Long autorId) throws Exception {
+        PhotoModel photoModel = new PhotoModel();
+        String photoUrl = firebaseImageService.save(photo);
+        photoModel.setPhotoUrl(photoUrl);
         photoModel.setAuthorId(autorId);
         photoModel.setLikes(0);
 
         photoRepository.save(photoModel);
     }
 
-    public Optional<PhotoModel> getPhoto(Long id) {
-        return photoRepository.findById(id);
+    public ResponseEntity<PhotoResponse> getPhotoById(Long id) {
+        PhotoModel photoModel = photoRepository.findPhotoModelById(id);
+        if (photoModel==null) {
+            return null;
+        }
+        PhotoResponse photoResponse = new PhotoResponse(photoModel);
+
+        return ResponseEntity.ok()
+                .body(photoResponse);
     }
 
-    public List<PhotoModel> getAllFiles() {
-        return photoRepository.findAll();
+    public List<PhotoResponse> getPhotoByAuthorId(Long authorId) {
+        return photoRepository.findPhotoModelByAuthorId(authorId)
+                .stream()
+                .map(this::mapToPhotoResponse)
+                .collect(Collectors.toList());
     }
 
-    public List<PhotoModel> getByAuthorId(Long authorId) {
-        return photoRepository.findByAuthorId(authorId);
-    }
-
-
-    public boolean addLike(Long id) {
-        Optional<PhotoModel> photoModelOptional = photoRepository.findById(id);
-        if (!photoModelOptional.isPresent()) {
+    public boolean addPhotoLikeById(Long id) {
+        PhotoModel photoModel = photoRepository.findPhotoModelById(id);
+        if (photoModel==null) {
             return false;
         }
-        PhotoModel photoModel = photoModelOptional.get();
         photoModel.setLikes(photoModel.getLikes()+1);
         photoRepository.save(photoModel);
         return true;
     }
 
-    public void delPhoto(Long id) {
+    public void delPhotoById(Long id) {
         photoRepository.deleteById(id);
     }
 
-    public boolean editPhoto(Long id, MultipartFile photo, Long autorId) throws IOException {
-        Optional<PhotoModel> photoModelOptional = photoRepository.findById(id);
-        if (!photoModelOptional.isPresent()) {
+    public boolean editPhotoById(Long id, MultipartFile photo, Long autorId) throws Exception {
+        PhotoModel photoModel = photoRepository.findPhotoModelById(id);
+        if (photoModel==null) {
             return false;
         }
-        PhotoModel photoModel = photoModelOptional.get();
-        photoModel.setName(StringUtils.cleanPath(photo.getOriginalFilename()));
-        photoModel.setContentType(photo.getContentType());
-        photoModel.setData(photo.getBytes());
-        photoModel.setSize(photo.getSize());
-
+        String photoUrl = firebaseImageService.save(photo);
+        photoModel.setPhotoUrl(photoUrl);
         photoModel.setAuthorId(autorId);
         photoModel.setLikes(0);
 
         photoRepository.save(photoModel);
         return true;
+    }
+
+    public Long getPhotoLikesById(Long id) {
+        PhotoModel photoModel = photoRepository.findPhotoModelById(id);
+        if (photoModel==null) {
+            return null;
+        }
+        return photoModel.getLikes();
     }
 }
