@@ -1,6 +1,6 @@
 package by.tux.instagram160.models;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 
 import lombok.Data;
 
